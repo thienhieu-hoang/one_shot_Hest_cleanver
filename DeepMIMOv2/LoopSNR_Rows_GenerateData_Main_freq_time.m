@@ -195,7 +195,7 @@ for snr = SNR
         
         if dataset_params.staticChan == 1
             % H_mean_data(:,:,1,1) = repmat(mean(H_linear_data(:,:,1,1),1),dataset_params.OFDM.num_symbol); %  take the 1x612 mean vector from 14x612, then replicate 14 times
-            save(['Gan_Data/Static_BS16/freq_symb_',num2str(bs_ant),'ant_',num2str(subs),'sub/Gan_',num2str(snr),'_dB',filename],'H_data', 'H_linear_data', 'H_equalized_data', 'Y_data', 'H_practical_data',"dataset_params",'-v7.3');
+            save(['DeepMIMO_Data/Static_BS16/freq_symb_',num2str(bs_ant),'ant_',num2str(subs),'sub/Gan_',num2str(snr),'_dB',filename],'H_data', 'H_linear_data', 'H_equalized_data', 'Y_data', 'H_practical_data',"dataset_params",'-v7.3');
         end
     end
 end
