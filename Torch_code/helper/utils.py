@@ -96,27 +96,4 @@ def train_loop(learning_rate, valLabels, val_loader, train_loader, model, NUM_EP
         print(f" Val Loss: {avg_val_loss}")
     return train_loss, vali_loss, H_NN_val
 
-#---------------------------------------
-#---------------------------------------
-# help function to save files
-#---------------------------------------
-#---------------------------------------
-# find the index to save to save files
-def find_incremental_filename(directory, base_name):
-    # List all files in the directory
-    files = os.listdir(directory)
-    
-    # Filter out files that match the base name and have a '.mat' extension
-    existing_files = [f for f in files if f.startswith(base_name) and f.endswith('.mat')]
-    
-    # Extract the numbers from the filenames
-    numbers = [int(f[len(base_name):-4]) for f in existing_files if f[len(base_name):-4].isdigit()]
-    
-    # Determine the next number
-    if numbers:
-        next_number = max(numbers) + 1
-    else:
-        next_number = 1  # Start numbering from 1 if no existing files  
-    return next_number
-
 
