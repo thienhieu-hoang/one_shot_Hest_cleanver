@@ -164,8 +164,9 @@ for snr = SNR
         % channels_r(:,:,:,2) = imag(channels); % imag part of H
         
         % Shuffle data 
-        shuff            = randi([1,size(channels,3)], size(channels,3), 1);  % random, not permute
-        
+        % shuff            = randi([1,size(channels,3)], size(channels,3), 1);  % random pick, not permute
+        shuff            = randperm(size(channels,3))';  % permute shuffle
+
         H_equalized_data = H_equalized_data(:,:,shuff,:,:);
         H_linear_data    = H_linear_data(:,:,shuff,:,:);
         H_practical_data = H_practical_data(:,:,shuff,:,:);
@@ -177,9 +178,9 @@ for snr = SNR
         H_practical_data = permute(H_practical_data, [2,1,5,3,4]);
         Y_data           = permute(Y_data, [2,1,5,3,4]);
         H_data           = permute(H_data, [2,1,5,3,4]);
-            % subc x symb x 2 x samples x 1 (BS_ant) 
+            % symb x subc x 2 x samples x 1 (BS_ant) 
             % to get size in python
-            % samples (noUE) x 2 x symb x subc (size in Pytorch)
+            % samples (noUE) x 2 x subc x symb (size in Pytorch)
         
         %% Visualization of Y and H
         % figure
