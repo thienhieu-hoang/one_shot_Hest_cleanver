@@ -59,7 +59,7 @@ for snr = SNR
     for r = 1:size(Rows, 1)
         dataset_params.active_user_first = Rows(r,1);
         dataset_params.active_user_last  = Rows(r,2);
-        filename = ['Outdoor1_60_',num2str(bs_ant),'ant_',num2str(subs),'subcs_Row_', num2str(dataset_params.active_user_first),'_', num2str(dataset_params.active_user_last)];
+        filename = ['Outdoor1_3p4_',num2str(bs_ant),'ant_',num2str(subs),'subcs_Row_', num2str(dataset_params.active_user_first),'_', num2str(dataset_params.active_user_last)];
     
         %% Generate channel dataset H                            
         % dataset_params.saveDataset = 1;
