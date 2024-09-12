@@ -1,3 +1,6 @@
+there is a code and figure result comparing NMSE's of 
+    LS+LI, LS+LI+CNN, LS+CNN in folder 'static/CNN/BS16/3500_3516/ver1'
+
 in the _params.mat and _variable.pth files: 
 
     params = {   
