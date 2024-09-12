@@ -182,21 +182,16 @@ for snr = SNR
             % to get size in python
             % samples (noUE) x 2 x subc x symb (size in Pytorch)
         
-        %% Visualization of Y and H
-        % figure
-        % imshow(squeeze(input_da(:,:,1,1,1))) % user 1, antenna 1 of BS, real part
-        % title('Visualization of Y')
-        % figure
-        % imshow(squeeze(output_da(:,:,1,1,1)))
-        % title('Visualization of H')
         
-        %% Save data
-        % save(['Gan_Data/Doppler_shift/freq_symb_',num2str(bs_ant),'ant_',num2str(subs),'sub/new3_Gan_',num2str(snr),'_dB',filename],'Y_','H_','H_equal','H_linear','Y_test','H_test', 'H_equal_test', 'H_linear_test',"dataset_params",'-v7.3');
-        % save(['Gan_Data/Doppler_shift/freq_symb_',num2str(bs_ant),'ant_',num2str(subs),'sub/new4_Gan_',num2str(snr),'_dB',filename],'H_data', 'H_linear_data', 'H_equalized_data', 'Y_data',"dataset_params",'-v7.3');
-        
+        % %% Save data
         if dataset_params.staticChan == 1
-            % H_mean_data(:,:,1,1) = repmat(mean(H_linear_data(:,:,1,1),1),dataset_params.OFDM.num_symbol); %  take the 1x612 mean vector from 14x612, then replicate 14 times
-            save(['DeepMIMO_Data/Static_BS16/freq_symb_',num2str(bs_ant),'ant_',num2str(subs),'sub_ver3/Gan_',num2str(snr),'_dB',filename],'H_data', 'H_linear_data', 'H_equalized_data', 'Y_data', 'H_practical_data',"dataset_params",'-v7.3');
+            % Check if the save folder exists
+            % save_file = ['DeepMIMO_Data/Static_BS16/freq_symb_',num2str(bs_ant),'ant_',num2str(subs),'sub_ver4/Gan_',num2str(snr),'_dB',filename];
+            save_folder = ['DeepMIMO_Data/Static_BS16/freq_symb_',num2str(bs_ant),'ant_',num2str(subs),'sub_ver4/Gan_',num2str(snr),'_dB',filename];
+            if ~exist(save_folder, 'dir')
+                mkdir(save_folder);
+            end
+            save(save_folder,'H_data', 'H_linear_data', 'H_equalized_data', 'Y_data', 'H_practical_data',"dataset_params",'-v7.3');
         end
     end
 end
