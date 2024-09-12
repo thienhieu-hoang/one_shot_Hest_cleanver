@@ -1,13 +1,10 @@
-- To change scenario, set 'params.scenario' in parameters_freq_time.m
-                       to 'O1_60' or 'O1_3p4' (folder name in 'Raytracing_scenarios/')
+Files to generate resource grid 64x14 with 14 varied channels for 14 OFDM symbols:
+    - GenerateData_Main_freq_time.m
+    - parameters_freq_time.m
+    - DeepMIMO_function/construct_DeepMIMO_channel_freq_time.m
+    - DeepMIMO_function/DeepMIMO_generator_freq_time.m
 
-- To generate resource grid 64x14 with static channel (14 same channels for 14 OFDM symbols):
-    - set params.staticChan == 1 in LoopSNR_(...).m
+change the file index '_ver1', '_ver2',... before generating data
 
-- Generated data saved in DeepMIMO_Data folder
-
-- v1, v2, v3: use DeepMIMO 60 GHz dataset
-- v4: use DeepMIMO 3.4 GHz dataset 
-
-- To overview the data image, refer to Onenote 
-    'H predict' - 'note' section - 'Data' page
+To generate resource grid 64x14 with static channel (14 same channels for 14 OFDM symbols):
+    - set params.staticChan == 1 in parameters_freq_time.m
