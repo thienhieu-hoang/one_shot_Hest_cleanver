@@ -96,4 +96,34 @@ def train_loop(learning_rate, valLabels, val_loader, train_loader, model, NUM_EP
         print(f" Val Loss: {avg_val_loss}")
     return train_loss, vali_loss, H_NN_val
 
+def minmaxScaler(x):
+    x_min = []
+    x_max = []
+    x_normd = torch.empty(x.shape)
+    for i in range(x.shape[0]):
+        sample = x[i]
+        
+        # Compute max and min for the current sample
+        min = sample.min()
+        max = sample.max()
+        
+        x_normd[i,:,:,:] = (sample - min) / (max - min) *2 -1
+        x_min.append(min.item())
+        x_max.append(max.item())
+    return x_normd, x_min, x_max
 
+def standardize(x):
+    x_mean = []
+    x_var = []
+    x_normd = torch.empty(x.shape)
+    for i in range(x.shape[0]):
+        sample = x[i]
+        
+        # Compute mean and variance for the current sample
+        mean = sample.mean()
+        variance = sample.var()
+        
+        x_normd[i,:,:,:] = (sample - mean) / np.sqrt(variance)
+        x_mean.append(mean.item())
+        x_var.append(variance.item())
+    return x_normd, x_mean, x_var

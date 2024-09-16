@@ -10,7 +10,7 @@ temp_path = os.path.dirname(os.path.abspath(__file__))      # postion where conf
 FILE_PATH = os.path.abspath(os.path.join(temp_path, '..'))  # postion where helper folder is located
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
-SNR = 0 # dB
+# SNR = 0 # dB
 
 BATCH_SIZE = 32 #64  # Batch size
 NUM_EPOCHS = 20

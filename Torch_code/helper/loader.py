@@ -6,7 +6,10 @@ from torch.utils.data import DataLoader, TensorDataset
 
 
 import config
+import utils
 import utils_GAN
+
+
 
 def load_data(outer_file_path, rows, device, snr):
     H_true = np.empty((0, 2, 612, 14)) # true channel
@@ -75,10 +78,10 @@ def loader_dataset(H_linear_train_normd, H_true_train_nomrd, H_linear_val_normd,
 
 def load_model(params):
     generator_li = utils_GAN.Generator(in_channel=params['in_channel'])   # in_channel=1 to estimate real and imag parts separately,
-                                                                 # default: in_channel=2 to estimate real and imag parts at the same time
+                                                                # default: in_channel=2 to estimate real and imag parts at the same time
     discriminator_li = utils_GAN.Discriminator(params['in_channel'])
     generator_ls = utils_GAN.Generator(in_channel=params['in_channel'])   # in_channel=1 to estimate real and imag parts separately,
-                                                                 # default: in_channel=2 to estimate real and imag parts at the same time
+                                                                # default: in_channel=2 to estimate real and imag parts at the same time
     discriminator_ls = utils_GAN.Discriminator(params['in_channel'])
     if params['load_saved_model']:
         # modify the directory
@@ -143,3 +146,26 @@ def find_incremental_filename(directory, prefix_name, postfix_name, extension='.
     else:
         next_number = 1  # Start numbering from 1 if no existing files  
     return next_number
+
+def genLoader(data, target, BATCH_SIZE, approach):
+        # approach = 'minmax' or 'std'
+        #   in 'minmax' case: x-min;  y-max
+        #   in    'std' case: x-mean; y-var 
+
+    # 1.2 Normalization Min-Max scaler
+    if approach == 'minmax':
+        data_normd,   data_x, data_y  = utils.minmaxScaler(data)
+        label_normd, label_x, label_y = utils.minmaxScaler(target)
+    elif approach == 'std':
+        data_normd,   data_x, data_y  = utils.standardize(data)
+        label_normd, label_x, label_y = utils.standardize(target)
+        
+    # Split real and imaginary grids into 2 image sets, then concatenate
+    data_normd   = torch.cat((data_normd[:,0,:,:], data_normd[:,1,:,:]), dim=0).unsqueeze(1)  # 612 x 14 x (Nsamples*2)
+    label_normd = torch.cat((label_normd[:,0,:,:], label_normd[:,1,:,:]), dim=0).unsqueeze(1)  # 612 x 14 x (Nsamples*2)
+
+    # 1.3 Create a DataLoader for dataset
+    dataset = TensorDataset(data_normd, label_normd, label_x, label_y)  # [4224, 1, 612, 14]
+    loader  = DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=True)
+
+    return loader, label_x, label_y
