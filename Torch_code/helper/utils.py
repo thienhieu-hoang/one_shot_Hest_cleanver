@@ -110,6 +110,9 @@ def minmaxScaler(x):
         x_normd[i,:,:,:] = (sample - min) / (max - min) *2 -1
         x_min.append(min.item())
         x_max.append(max.item())
+        
+    x_min = torch.tensor(x_min)
+    x_max = torch.tensor(x_max)
     return x_normd, x_min, x_max
 
 def deMinMax(x_normd, x_min, x_max):
@@ -132,6 +135,9 @@ def standardize(x):
         x_normd[i,:,:,:] = (sample - mean) / np.sqrt(variance)
         x_mean.append(mean.item())
         x_var.append(variance.item())
+        
+    x_mean = torch.tensor(x_mean)
+    x_var = torch.tensor(x_var)
     return x_normd, x_mean, x_var
 
 def deSTD(x_normd, mean, var):
@@ -141,3 +147,32 @@ def deSTD(x_normd, mean, var):
         
         x_denormd[i,:,:,:] = sample* np.sqrt(var) + mean
     return x_denormd        
+
+def val_step(model, val_loader, criterion, epoch, num_epochs, H_NN_val):
+    model.eval()
+    i=0
+    running_val_loss = 0.0
+    with torch.no_grad():
+        for val_inputs, val_targets, val_targetsMin, val_targetsMax in val_loader:
+            val_inputs_real = val_inputs[:,0,:,:].unsqueeze(1)
+            val_inputs_imag = val_inputs[:,1,:,:].unsqueeze(1)
+            val_targets_real = val_targets[:,0,:,:].unsqueeze(1)
+            val_targets_imag = val_targets[:,1,:,:].unsqueeze(1)
+            
+            val_outputs_real = model(val_inputs_real)
+            val_loss_real = criterion(val_outputs_real, val_targets_real)
+            running_val_loss += val_loss_real.item()
+            
+            val_outputs_imag = model(val_inputs_imag)
+            val_loss_imag = criterion(val_outputs_imag, val_targets_imag)
+            running_val_loss += val_loss_imag.item()
+            
+            if (epoch == num_epochs-1): # the results after the last training 
+                H_NN_val[i:i+val_outputs_real.size(0),0,:,:].unsqueeze(1).copy_(val_outputs_real)
+                H_NN_val[i:i+val_outputs_imag.size(0),1,:,:].unsqueeze(1).copy_(val_outputs_imag)
+                
+                i = i+val_outputs_imag.size(0)       
+                
+            
+    avg_val_loss = running_val_loss / (len(val_loader)*2)
+    return avg_val_loss, H_NN_val

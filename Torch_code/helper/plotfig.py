@@ -1,5 +1,5 @@
 import os
-import matplotlib as plt
+import matplotlib.pyplot as plt
 
 
 def figLoss(train_loss, val_loss, index_save, figure_save_path, name):

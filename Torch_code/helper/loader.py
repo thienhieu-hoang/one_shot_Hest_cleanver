@@ -147,7 +147,8 @@ def find_incremental_filename(directory, prefix_name, postfix_name, extension='.
         next_number = 1  # Start numbering from 1 if no existing files  
     return next_number
 
-def genLoader(data, target, BATCH_SIZE, shuff, approach):
+def genLoader(data, target, BATCH_SIZE, device, mode, shuff, approach):
+        # mode = 'train' or 'valid'
         # approach = 'minmax' or 'std'
         #   in 'minmax' case: x-min;  y-max
         #   in    'std' case: x-mean; y-var 
@@ -159,10 +160,18 @@ def genLoader(data, target, BATCH_SIZE, shuff, approach):
     elif approach == 'std':
         data_normd,   data_x, data_y  = utils.standardize(data)
         label_normd, label_x, label_y = utils.standardize(target)
+    
+    if mode == 'train':
+        # Split real and imaginary grids into 2 image sets, then concatenate
+        data_normd  = torch.cat((data_normd[:,0,:,:], data_normd[:,1,:,:]), dim=0).unsqueeze(1)  # 612 x 14 x (Nsamples*2)
+        label_normd = torch.cat((label_normd[:,0,:,:], label_normd[:,1,:,:]), dim=0).unsqueeze(1)  # 612 x 14 x (Nsamples*2)
+        label_x     = torch.cat((label_x, label_x), dim=0)
+        label_y     = torch.cat((label_y, label_y), dim=0)
         
-    # Split real and imaginary grids into 2 image sets, then concatenate
-    data_normd   = torch.cat((data_normd[:,0,:,:], data_normd[:,1,:,:]), dim=0).unsqueeze(1)  # 612 x 14 x (Nsamples*2)
-    label_normd = torch.cat((label_normd[:,0,:,:], label_normd[:,1,:,:]), dim=0).unsqueeze(1)  # 612 x 14 x (Nsamples*2)
+    data_normd  = data_normd.to(device, dtype=torch.float)
+    label_normd = label_normd.to(device, dtype=torch.float)
+    label_x     = label_x.to(device, dtype=torch.float)
+    label_y     = label_y.to(device, dtype=torch.float)
 
     # 1.3 Create a DataLoader for dataset
     dataset = TensorDataset(data_normd, label_normd, label_x, label_y)  # [4224, 1, 612, 14]
