@@ -133,3 +133,11 @@ def standardize(x):
         x_mean.append(mean.item())
         x_var.append(variance.item())
     return x_normd, x_mean, x_var
+
+def deSTD(x_normd, mean, var):
+    x_denormd = torch.empty(x_normd.shape)
+    for i in range(x_normd.shape[0]):
+        sample = x_normd[i]
+        
+        x_denormd[i,:,:,:] = sample* np.sqrt(var) + mean
+    return x_denormd        
