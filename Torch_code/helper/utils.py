@@ -112,6 +112,12 @@ def minmaxScaler(x):
         x_max.append(max.item())
     return x_normd, x_min, x_max
 
+def deMinMax(x_normd, x_min, x_max):
+    x_denormed = torch.empty(x_normd.shape)
+    for i in range(x_normd.shape[0]):
+        x_denormed[i,:,:,:] = (x_normd[i,:,:,:] +1) /2 *(x_max -x_min) + x_min
+    return  x_denormed
+
 def standardize(x):
     x_mean = []
     x_var = []

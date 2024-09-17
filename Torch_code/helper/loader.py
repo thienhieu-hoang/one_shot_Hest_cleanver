@@ -11,7 +11,7 @@ import utils_GAN
 
 
 
-def load_data(outer_file_path, rows, device, snr):
+def load_data(outer_file_path, rows, fc, device, snr):
     H_true = np.empty((0, 2, 612, 14)) # true channel
 
     H_equal = np.empty((0, 2, 612, 14)) # noisy channel # LS channel
@@ -20,7 +20,7 @@ def load_data(outer_file_path, rows, device, snr):
 
     # read data from ifferent .mat file, then concatenate them
     for i in range(len(rows)):
-        file_path_partial = 'Gan_'+ str(snr)+'_dBOutdoor1_60_1ant_612subcs_Row_' + rows[i][0] +'_' + rows[i][1] + '.mat'
+        file_path_partial = 'Gan_'+ str(snr)+'_dBOutdoor1_' + fc +'_1ant_612subcs_Row_' + rows[i][0] +'_' + rows[i][1] + '.mat'
 
         file_path = os.path.join(outer_file_path, file_path_partial)
         file_path = os.path.normpath(file_path)
@@ -147,7 +147,7 @@ def find_incremental_filename(directory, prefix_name, postfix_name, extension='.
         next_number = 1  # Start numbering from 1 if no existing files  
     return next_number
 
-def genLoader(data, target, BATCH_SIZE, approach):
+def genLoader(data, target, BATCH_SIZE, shuff, approach):
         # approach = 'minmax' or 'std'
         #   in 'minmax' case: x-min;  y-max
         #   in    'std' case: x-mean; y-var 
@@ -166,6 +166,6 @@ def genLoader(data, target, BATCH_SIZE, approach):
 
     # 1.3 Create a DataLoader for dataset
     dataset = TensorDataset(data_normd, label_normd, label_x, label_y)  # [4224, 1, 612, 14]
-    loader  = DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=True)
+    loader  = DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=shuff)
 
     return loader, label_x, label_y
