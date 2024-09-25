@@ -182,8 +182,8 @@ def calNMSE(x, target):
     # return ?x1 array: nmse of each data sample and target sample
     NMSE_array = torch.empty(x.shape[0])
     for i in range(x.shape[0]):
-        var_i = torch.var(target[i,:,:])
+        target_squared = torch.mean(torch.abs(target[i,:,:]) **2)
         mse_i = torch.mean(torch.abs(x[i,:,:] - target[i,:,:]) ** 2)
-        NMSE_array[i] = mse_i/var_i
+        NMSE_array[i] = mse_i/target_squared
     return NMSE_array    
     
