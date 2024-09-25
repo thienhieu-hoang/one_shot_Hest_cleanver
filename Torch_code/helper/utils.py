@@ -13,33 +13,74 @@ import utils
 ######################
 # Helping functions/classes for CNN
 ####################
-class CNN_Est(nn.Module):
-    def __init__(self):
-        super(CNN_Est, self).__init__()
+# class CNN_Est(nn.Module):
+#     def __init__(self):
+#         super(CNN_Est, self).__init__()
         
+#         self.normalization = nn.BatchNorm2d(1)
+        
+#         self.conv1 = nn.Conv2d(in_channels=1, out_channels=64, kernel_size=9, padding=4)
+#         self.relu  = nn.ReLU() 
+#         self.conv2 = nn.Conv2d(in_channels=64, out_channels=64, kernel_size=5, padding=2)
+#         self.conv3 = nn.Conv2d(in_channels=64, out_channels=64, kernel_size=5, padding=2)
+#         self.conv4 = nn.Conv2d(in_channels=64, out_channels=32, kernel_size=5, padding=2)
+#         self.conv5 = nn.Conv2d(in_channels=32, out_channels=1, kernel_size=5, padding=2)
+
+#     def forward(self, x):
+#         # Forward pass
+#         out = self.normalization(x)
+#         out = self.conv1(x)
+#         out = self.relu(out)  
+#         out = self.conv2(out)
+#         out = self.relu(out)  
+#         out = self.conv3(out)
+#         out = self.relu(out)  
+#         out = self.conv4(out)
+#         out = self.relu(out) 
+#         out = self.conv5(out)
+#         return out
+
+class CNN_Est(nn.Module): # CNN_Est with DropOut version1
+    def __init__(self, dropOut = 0, act = 'ReLU'):
+        super(CNN_Est, self).__init__()        
         self.normalization = nn.BatchNorm2d(1)
+        self.dropOut = dropOut
         
         self.conv1 = nn.Conv2d(in_channels=1, out_channels=64, kernel_size=9, padding=4)
-        self.relu  = nn.ReLU() 
+        if act == 'ReLU':
+            self.activate  = nn.ReLU() 
+        elif act == 'Tanh':
+            self.activate  = nn.Tanh()
+        elif act == 'Sigmoid':
+            self.activate  = nn.Sigmoid()
+        elif act == 'LeakyReLU':
+            self.activate  = nn.LeakyReLU(negative_slope=0.01)
+            
         self.conv2 = nn.Conv2d(in_channels=64, out_channels=64, kernel_size=5, padding=2)
         self.conv3 = nn.Conv2d(in_channels=64, out_channels=64, kernel_size=5, padding=2)
         self.conv4 = nn.Conv2d(in_channels=64, out_channels=32, kernel_size=5, padding=2)
         self.conv5 = nn.Conv2d(in_channels=32, out_channels=1, kernel_size=5, padding=2)
+        if dropOut != 0:
+            self.dropout = nn.Dropout(p=dropOut)
 
     def forward(self, x):
         # Forward pass
         out = self.normalization(x)
         out = self.conv1(x)
-        out = self.relu(out)  
+        out = self.activate(out)  
         out = self.conv2(out)
-        out = self.relu(out)  
+        out = self.activate(out) 
+        if self.dropOut != 0:
+            out = self.dropout(out)
         out = self.conv3(out)
-        out = self.relu(out)  
+        out = self.activate(out)  
         out = self.conv4(out)
-        out = self.relu(out) 
+        out = self.activate(out) 
+        if self.dropOut != 0:
+            out = self.dropout(out)
         out = self.conv5(out)
-        return out
-    
+        return out    
+
 # Training loop # function for CNN
 def train_loop(learning_rate, valLabels, val_loader, train_loader, model, NUM_EPOCHS):
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate) 
@@ -96,7 +137,9 @@ def train_loop(learning_rate, valLabels, val_loader, train_loader, model, NUM_EP
         print(f" Val Loss: {avg_val_loss}")
     return train_loss, vali_loss, H_NN_val
 
-def minmaxScaler(x):
+def minmaxScaler(x, lower_range = -1):
+    # lower_range = -1 -- scale to [-1 1] range
+    # lower_range =  1 -- scale to [0 1] range
     x_min = []
     x_max = []
     x_normd = torch.empty(x.shape)
@@ -106,8 +149,11 @@ def minmaxScaler(x):
         # Compute max and min for the current sample
         min = sample.min()
         max = sample.max()
-        
-        x_normd[i,:,:,:] = (sample - min) / (max - min) *2 -1
+        if lower_range ==-1:
+            x_normd[i,:,:,:] = (sample - min) / (max - min) *2 -1
+        elif lower_range ==0:
+            x_normd[i,:,:,:] = (sample - min) / (max - min)
+            
         x_min.append(min.item())
         x_max.append(max.item())
         
