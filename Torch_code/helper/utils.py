@@ -161,10 +161,15 @@ def minmaxScaler(x, lower_range = -1):
     x_max = torch.tensor(x_max)
     return x_normd, x_min, x_max
 
-def deMinMax(x_normd, x_min, x_max):
+def deMinMax(x_normd, x_min, x_max, lower_range=-1):
     x_denormed = torch.empty(x_normd.shape)
-    for i in range(x_normd.shape[0]):
-        x_denormed[i,:,:,:] = (x_normd[i,:,:,:] +1) /2 *(x_max[i] -x_min[i]) + x_min[i]
+    if lower_range ==-1:
+        for i in range(x_normd.shape[0]):
+            x_denormed[i,:,:,:] = (x_normd[i,:,:,:] +1) /2 *(x_max[i] -x_min[i]) + x_min[i]
+    elif lower_range ==0:
+        for i in range(x_normd.shape[0]):
+            x_denormed[i,:,:,:] = (x_normd[i,:,:,:]) *(x_max[i] -x_min[i]) + x_min[i]
+            
     return  x_denormed
 
 def standardize(x):
@@ -192,7 +197,23 @@ def deSTD(x_normd, mean, var):
         sample = x_normd[i]
         
         x_denormd[i,:,:,:] = sample* np.sqrt(var[i]) + mean[i]
-    return x_denormd        
+    return x_denormd  
+
+def deNorm(x_normd, x_1, x_2, norm_approach, lower_range=-1):
+    # lower_range used in case of deMinMax
+    # norm_approach = 'minmax' or 'std' 
+    if norm_approach == 'minmax':
+        x_denormd = deMinMax(x_normd, x_1, x_2, lower_range)
+                            # x_1 -- x_min
+                            # x_2 -- x_max
+    elif norm_approach == 'std':
+        x_denormd = deSTD(x_normd, x_1, x_2)
+                        # x_1 == x_mean
+                        # x_2 == x_var
+    elif norm_approach == 'no':
+        x_denormd = x_normd
+        
+    return x_denormd
 
 def val_step(model, val_loader, criterion, epoch, num_epochs, H_NN_val):
     model.eval()

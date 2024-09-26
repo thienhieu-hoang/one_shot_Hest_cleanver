@@ -147,19 +147,33 @@ def find_incremental_filename(directory, prefix_name, postfix_name, extension='.
         next_number = 1  # Start numbering from 1 if no existing files  
     return next_number
 
-def genLoader(data, target, BATCH_SIZE, device, mode, shuff, approach):
+def genLoader(data, target, BATCH_SIZE, device, mode, shuff, approach, lower_range=-1):
         # mode = 'train' or 'valid'
-        # approach = 'minmax' or 'std'
+        # approach = 'minmax', 'std', or 'no'
         #   in 'minmax' case: x-min;  y-max
+        #                       lower_range = -1  -- scale to [-1 1] range
+        #                       lower_range =  0  -- scale to  [0 1] range
         #   in    'std' case: x-mean; y-var 
 
     # 1.2 Normalization Min-Max scaler
     if approach == 'minmax':
-        data_normd,   data_x, data_y  = utils.minmaxScaler(data)
-        label_normd, label_x, label_y = utils.minmaxScaler(target)
+        data_normd,   data_x, data_y  = utils.minmaxScaler(data, lower_range)
+        label_normd, label_x, label_y = utils.minmaxScaler(target, lower_range)
+                    # x: min
+                    # y: max
     elif approach == 'std':
         data_normd,   data_x, data_y  = utils.standardize(data)
         label_normd, label_x, label_y = utils.standardize(target)
+                    # x: mean
+                    # y: var
+        # data_normd  == torch.tensor N_samples(data) x 2 x 612 x 14
+        # label_normd == torch.tensor N_samples(label) x 2 x 612 x 14
+        # x, y == torch.tensor  [N_samples (data/target)]
+    elif approach == 'no':
+        data_normd  = data
+        label_normd = target
+        label_x = torch.zeros(target.shape[0])
+        label_y = torch.zeros(target.shape[0])
     
     if mode == 'train':
         # Split real and imaginary grids into 2 image sets, then concatenate
