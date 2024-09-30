@@ -32,7 +32,7 @@ class FineTuneModel(nn.Module):
         
         # Add 3 more layers
         self.conv6 = nn.Conv2d(16, 8, kernel_size=(5, 5), stride=(1, 1), padding=(2, 2))
-        self.conv7 = nn.Conv2d( 8, 1, kernel_size=(5, 5), stride=(1, 1), padding=(5, 5))
+        self.conv7 = nn.Conv2d( 8, 1, kernel_size=(5, 5), stride=(1, 1), padding=(2, 2))
         
     def forward(self, x):
         x = self.normalization(x)

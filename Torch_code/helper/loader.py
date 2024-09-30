@@ -60,6 +60,56 @@ def load_data(outer_file_path, rows, fc, device, snr):
     
     return [trainLabels, valLabels], [H_equal_train, H_linear_train, H_practical_train], [H_equal_val, H_linear_val, H_practical_val]
 
+def load_map_data(outer_file_path, device, snr):
+    H_true = np.empty((0, 2, 612, 14)) # true channel
+
+    H_equal = np.empty((0, 2, 612, 14)) # noisy channel # LS channel
+    H_linear = np.empty((0, 2, 612, 14)) # noisy channel # LS+Linear Interpolated channel
+    H_practical = np.empty((0, 2, 612, 14)) # noisy channel # Practical Estimated channel
+
+    # read data from .mat file
+    file_path_partial = str(snr)+'dB/1_mapBaseData.mat'
+
+    file_path = os.path.join(outer_file_path, file_path_partial)
+    file_path = os.path.normpath(file_path)
+    file = h5py.File(file_path, 'r')
+    
+    H_true = np.concatenate((H_true, np.array(file['H_data'])), axis = 0) # N_samples x channel(2) x height(614) x width(14)
+    H_equal = np.concatenate((H_equal, np.array(file['H_equalized_data'])), axis = 0)
+    H_linear = np.concatenate((H_linear, np.array(file['H_linear_data'])), axis=0)
+    if 'H_practical_data' in file:
+        H_practical = np.concatenate((H_practical, np.array(file['H_practical_data'])), axis=0)
+        
+    shuffle_order = np.random.permutation(H_true.shape[0]);
+    H_true = torch.tensor(H_true[shuffle_order])
+    H_equal = torch.tensor(H_equal[shuffle_order])
+    H_linear = torch.tensor(H_linear[shuffle_order])
+    if 'H_practical_data' in file:
+        H_practical = torch.tensor(H_practical[shuffle_order])
+    
+    train_size = np.floor(H_linear.shape[0]*0.9) //config.BATCH_SIZE *config.BATCH_SIZE
+    train_size = int(train_size)
+    
+    # [samples, 2, 612, 14]
+    # Split into training and validation sets for H_NN training
+    trainLabels = H_true[0:train_size,:,:,:].to(device, dtype=torch.float)
+    valLabels = H_true[train_size:,:,:,:].to(device, dtype=torch.float)
+    
+    H_equal_train   = H_equal[0:train_size,:,:,:].to(device, dtype=torch.float)         # after LS
+    H_linear_train   = H_linear[0:train_size,:,:,:].to(device, dtype=torch.float)       # after LS + linear interpolation
+    H_practical_train = torch.empty_like(H_linear_train)
+    if 'H_practical_data' in file:
+        H_practical_train = H_practical[0:train_size,:,:,:].to(device, dtype=torch.float)   # using Matlab practical estimation
+    
+    # Split H_equal, H_linear, H_practical for validation later
+    H_equal_val = H_equal[train_size:,:,:,:].to(device, dtype=torch.float)
+    H_linear_val = H_linear[train_size:,:,:,:].to(device, dtype=torch.float)
+    H_practical_val = torch.empty_like(H_linear_val)
+    if 'H_practical_data' in file:
+        H_practical_val = H_practical[train_size:,:,:,:].to(device, dtype=torch.float)
+    
+    return [trainLabels, valLabels], [H_equal_train, H_linear_train, H_practical_train], [H_equal_val, H_linear_val, H_practical_val]
+
 
 def loader_dataset(H_linear_train_normd, H_true_train_nomrd, H_linear_val_normd, H_true_val_normd):
     # Split real and imaginary grids into 2 image sets, then concatenate
