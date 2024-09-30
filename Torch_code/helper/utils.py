@@ -13,38 +13,14 @@ import utils
 ######################
 # Helping functions/classes for CNN
 ####################
-# class CNN_Est(nn.Module):
-#     def __init__(self):
-#         super(CNN_Est, self).__init__()
-        
-#         self.normalization = nn.BatchNorm2d(1)
-        
-#         self.conv1 = nn.Conv2d(in_channels=1, out_channels=64, kernel_size=9, padding=4)
-#         self.relu  = nn.ReLU() 
-#         self.conv2 = nn.Conv2d(in_channels=64, out_channels=64, kernel_size=5, padding=2)
-#         self.conv3 = nn.Conv2d(in_channels=64, out_channels=64, kernel_size=5, padding=2)
-#         self.conv4 = nn.Conv2d(in_channels=64, out_channels=32, kernel_size=5, padding=2)
-#         self.conv5 = nn.Conv2d(in_channels=32, out_channels=1, kernel_size=5, padding=2)
-
-#     def forward(self, x):
-#         # Forward pass
-#         out = self.normalization(x)
-#         out = self.conv1(x)
-#         out = self.relu(out)  
-#         out = self.conv2(out)
-#         out = self.relu(out)  
-#         out = self.conv3(out)
-#         out = self.relu(out)  
-#         out = self.conv4(out)
-#         out = self.relu(out) 
-#         out = self.conv5(out)
-#         return out
-
 class CNN_Est(nn.Module): # CNN_Est with DropOut version1
-    def __init__(self, dropOut = 0, act = 'ReLU'):
+    def __init__(self, dropOut = 0, act = 'ReLU', dropOutPos = [2,4]):
+        # dropOutPos: positions to add DropOut Layer
+        #   example: dropOutPos=[3,5] -> DropOut Layers after conv3 and conv5
         super(CNN_Est, self).__init__()        
         self.normalization = nn.BatchNorm2d(1)
         self.dropOut = dropOut
+        self.dropOutPos = dropOutPos
         
         self.conv1 = nn.Conv2d(in_channels=1, out_channels=64, kernel_size=9, padding=4)
         if act == 'ReLU':
@@ -66,17 +42,23 @@ class CNN_Est(nn.Module): # CNN_Est with DropOut version1
     def forward(self, x):
         # Forward pass
         out = self.normalization(x)
-        out = self.conv1(x)
-        out = self.activate(out)  
+        if (0 in self.dropOutPos) and self.dropOut:
+            out = self.dropout(out) 
+        out = self.conv1(out)
+        out = self.activate(out)
+        if (1 in self.dropOutPos) and self.dropOut:
+            out = self.dropout(out)  
         out = self.conv2(out)
         out = self.activate(out) 
-        if self.dropOut != 0:
+        if (2 in self.dropOutPos) and self.dropOut:
             out = self.dropout(out)
         out = self.conv3(out)
-        out = self.activate(out)  
+        out = self.activate(out) 
+        if (3 in self.dropOutPos) and self.dropOut:
+            out = self.dropout(out) 
         out = self.conv4(out)
         out = self.activate(out) 
-        if self.dropOut != 0:
+        if (4 in self.dropOutPos) and self.dropOut:
             out = self.dropout(out)
         out = self.conv5(out)
         return out    
@@ -140,63 +122,80 @@ def train_loop(learning_rate, valLabels, val_loader, train_loader, model, NUM_EP
 def minmaxScaler(x, lower_range = -1):
     # lower_range = -1 -- scale to [-1 1] range
     # lower_range =  1 -- scale to [0 1] range
-    x_min = []
-    x_max = []
+    # x == torch [Nsamples, 2, 612, 14]
+# return 
+    # x_normd = torch, size(x)  [Nsamples, 2, 612, 14]
+    # x_min, x_max = [Nsamples, 2] -- min, max of real and imag, of each sample 
+    x_min = torch.empty((0,2)).to(x.device)
+    x_max = torch.empty((0,2)).to(x.device)
     x_normd = torch.empty(x.shape)
     for i in range(x.shape[0]):
-        sample = x[i]
+        sample_real = x[i,0,:,:] # [2,612,14]
+        sample_imag = x[i,1,:,:]
         
         # Compute max and min for the current sample
-        min = sample.min()
-        max = sample.max()
-        if lower_range ==-1:
-            x_normd[i,:,:,:] = (sample - min) / (max - min) *2 -1
-        elif lower_range ==0:
-            x_normd[i,:,:,:] = (sample - min) / (max - min)
-            
-        x_min.append(min.item())
-        x_max.append(max.item())
+        min = torch.stack((sample_real.min(), sample_imag.min()))    # tensor[-1e-5 , -1e-5] device=cuda
+        max = torch.stack((sample_real.max(), sample_imag.max()))
         
-    x_min = torch.tensor(x_min)
-    x_max = torch.tensor(x_max)
+        if lower_range ==-1:
+            x_normd[i,0,:,:] = (sample_real - min[0]) / (max[0] - min[0]) *2 -1
+            x_normd[i,1,:,:] = (sample_imag - min[1]) / (max[1] - min[1]) *2 -1
+            
+        elif lower_range ==0:
+            x_normd[i,0,:,:] = (sample_real - min[0]) / (max[0] - min[0])
+            x_normd[i,1,:,:] = (sample_imag - min[1]) / (max[1] - min[1])
+            
+        x_min = torch.cat((x_min, min.unsqueeze(0)), dim=0)
+        x_max = torch.cat((x_max, max.unsqueeze(0)), dim=0)
+        
     return x_normd, x_min, x_max
 
 def deMinMax(x_normd, x_min, x_max, lower_range=-1):
     x_denormed = torch.empty(x_normd.shape)
     if lower_range ==-1:
         for i in range(x_normd.shape[0]):
-            x_denormed[i,:,:,:] = (x_normd[i,:,:,:] +1) /2 *(x_max[i] -x_min[i]) + x_min[i]
+            x_denormed[i,0,:,:] = (x_normd[i,0,:,:] +1) /2 *(x_max[i,0] -x_min[i,0]) + x_min[i,0]
+            x_denormed[i,1,:,:] = (x_normd[i,1,:,:] +1) /2 *(x_max[i,1] -x_min[i,1]) + x_min[i,1]
+            
+            
     elif lower_range ==0:
         for i in range(x_normd.shape[0]):
-            x_denormed[i,:,:,:] = (x_normd[i,:,:,:]) *(x_max[i] -x_min[i]) + x_min[i]
+            x_denormed[i,0,:,:] = (x_normd[i,0,:,:]) *(x_max[i,0] -x_min[i,0]) + x_min[i,0]
+            x_denormed[i,1,:,:] = (x_normd[i,1,:,:]) *(x_max[i,1] -x_min[i,1]) + x_min[i,1]
             
     return  x_denormed
 
 def standardize(x):
-    x_mean = []
-    x_var = []
+    # x == torch [Nsamples, 2, 612, 14]
+# return 
+    # x_normd = torch, size(x)  [Nsamples, 2, 612, 14]
+    # x_mean, x_var = [Nsamples, 2] -- mean, var of real and imag, of each sample 
+    x_mean = torch.empty((0,2)).to(x.device)
+    x_var  = torch.empty((0,2)).to(x.device)
     x_normd = torch.empty(x.shape)
     for i in range(x.shape[0]):
-        sample = x[i]
+        sample_real = x[i,0,:,:] # [2,612,14]
+        sample_imag = x[i,1,:,:]
         
         # Compute mean and variance for the current sample
-        mean = sample.mean()
-        variance = sample.var()
+        mean   = torch.stack((sample_real.mean(), sample_imag.mean()))    # tensor[-1e-5 , -1e-5] device=cuda
+        variance = torch.stack((sample_real.var(), sample_imag.var()))    # tensor[-1e-5 , -1e-5] device=cuda
         
-        x_normd[i,:,:,:] = (sample - mean) / np.sqrt(variance)
-        x_mean.append(mean.item())
-        x_var.append(variance.item())
+        x_normd[i,0,:,:] = (sample_real - mean[0]) / np.sqrt(variance[0])
+        x_normd[i,1,:,:] = (sample_imag - mean[1]) / np.sqrt(variance[1])
         
-    x_mean = torch.tensor(x_mean)
-    x_var = torch.tensor(x_var)
+        x_mean = torch.cat((x_mean,    mean.unsqueeze(0)), dim=0)
+        x_var  = torch.cat((x_var, variance.unsqueeze(0)), dim=0)
     return x_normd, x_mean, x_var
 
 def deSTD(x_normd, mean, var):
+    # x_normd = torch, size(x)  [Nsamples, 2, 612, 14]
+    # mean, var = [Nsamples, 2] -- mean, var of real and imag, of each sample 
     x_denormd = torch.empty(x_normd.shape)
     for i in range(x_normd.shape[0]):
-        sample = x_normd[i]
+        x_denormd[i,0,:,:] = x_normd[i,0,:,:]* np.sqrt(var[i,0]) + mean[i,0]
+        x_denormd[i,1,:,:] = x_normd[i,1,:,:]* np.sqrt(var[i,1]) + mean[i,1]
         
-        x_denormd[i,:,:,:] = sample* np.sqrt(var[i]) + mean[i]
     return x_denormd  
 
 def deNorm(x_normd, x_1, x_2, norm_approach, lower_range=-1):

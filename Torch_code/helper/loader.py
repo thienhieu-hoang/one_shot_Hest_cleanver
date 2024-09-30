@@ -168,7 +168,7 @@ def genLoader(data, target, BATCH_SIZE, device, mode, shuff, approach, lower_ran
                     # y: var
         # data_normd  == torch.tensor N_samples(data) x 2 x 612 x 14
         # label_normd == torch.tensor N_samples(label) x 2 x 612 x 14
-        # x, y == torch.tensor  [N_samples (data/target)]
+        # label/data x, y == torch.tensor  N_samples (data/target) x 2 - min/max/mean/var of real/imag of each sample
     elif approach == 'no':
         data_normd  = data
         label_normd = target
@@ -179,8 +179,9 @@ def genLoader(data, target, BATCH_SIZE, device, mode, shuff, approach, lower_ran
         # Split real and imaginary grids into 2 image sets, then concatenate
         data_normd  = torch.cat((data_normd[:,0,:,:], data_normd[:,1,:,:]), dim=0).unsqueeze(1)  # 612 x 14 x (Nsamples*2)
         label_normd = torch.cat((label_normd[:,0,:,:], label_normd[:,1,:,:]), dim=0).unsqueeze(1)  # 612 x 14 x (Nsamples*2)
-        label_x     = torch.cat((label_x, label_x), dim=0)
-        label_y     = torch.cat((label_y, label_y), dim=0)
+        label_x     = torch.cat((label_x[:,0], label_x[:,1]), dim=0)
+        label_y     = torch.cat((label_y[:,0], label_y[:,1]), dim=0)
+        # label x, y == torch.tensor  N_samples (data/target)*2 x 1 - min/max/mean/var of concatenated real-imag of each sample
         
     data_normd  = data_normd.to(device, dtype=torch.float)
     label_normd = label_normd.to(device, dtype=torch.float)
