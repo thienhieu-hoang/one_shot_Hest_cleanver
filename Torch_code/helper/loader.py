@@ -60,7 +60,7 @@ def load_data(outer_file_path, rows, fc, device, snr):
     
     return [trainLabels, valLabels], [H_equal_train, H_linear_train, H_practical_train], [H_equal_val, H_linear_val, H_practical_val]
 
-def load_map_data(outer_file_path, device, snr):
+def load_map_data(outer_file_path, device, snr, train_rate=0.9):
     H_true = np.empty((0, 2, 612, 14)) # true channel
 
     H_equal = np.empty((0, 2, 612, 14)) # noisy channel # LS channel
@@ -87,7 +87,7 @@ def load_map_data(outer_file_path, device, snr):
     if 'H_practical_data' in file:
         H_practical = torch.tensor(H_practical[shuffle_order])
     
-    train_size = np.floor(H_linear.shape[0]*0.9) //config.BATCH_SIZE *config.BATCH_SIZE
+    train_size = np.floor(H_linear.shape[0]* train_rate) //config.BATCH_SIZE *config.BATCH_SIZE
     train_size = int(train_size)
     
     # [samples, 2, 612, 14]
