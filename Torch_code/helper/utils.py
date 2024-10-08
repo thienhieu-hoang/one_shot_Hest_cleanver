@@ -63,6 +63,60 @@ class CNN_Est(nn.Module): # CNN_Est with DropOut version1
         out = self.conv5(out)
         return out    
 
+class CNN_Est2(nn.Module): # CNN_Est with slowly reduce layers
+    def __init__(self, dropOut = 0, act = 'ReLU', dropOutPos = [2,4]):
+        # dropOutPos: positions to add DropOut Layer
+        #   example: dropOutPos=[3,5] -> DropOut Layers after conv3 and conv5
+        super(CNN_Est2, self).__init__()        
+        self.normalization = nn.BatchNorm2d(1)
+        self.dropOut = dropOut
+        self.dropOutPos = dropOutPos
+        
+        self.conv1 = nn.Conv2d(in_channels=1, out_channels=64, kernel_size=9, padding=4)
+        if act == 'ReLU':
+            self.activate  = nn.ReLU() 
+        elif act == 'Tanh':
+            self.activate  = nn.Tanh()
+        elif act == 'Sigmoid':
+            self.activate  = nn.Sigmoid()
+        elif act == 'LeakyReLU':
+            self.activate  = nn.LeakyReLU(negative_slope=0.01)
+        self.activate_tanh = nn.Tanh()
+            
+        self.conv2 = nn.Conv2d(in_channels=64, out_channels=64, kernel_size=5, padding=2)
+        self.conv3 = nn.Conv2d(in_channels=64, out_channels=64, kernel_size=5, padding=2)
+        self.conv4 = nn.Conv2d(in_channels=64, out_channels=32, kernel_size=5, padding=2)
+        self.conv5 = nn.Conv2d(in_channels=32, out_channels=16, kernel_size=5, padding=2)
+        self.conv6 = nn.Conv2d(in_channels=16, out_channels=8, kernel_size=5, padding=2)
+        self.conv7 = nn.Conv2d(in_channels=8, out_channels=1, kernel_size=5, padding=2)
+        if dropOut != 0:
+            self.dropout = nn.Dropout(p=dropOut)
+
+    def forward(self, x):
+        # Forward pass
+        out = self.normalization(x)
+        if (0 in self.dropOutPos) and self.dropOut:
+            out = self.dropout(out) 
+        out = self.conv1(out)
+        out = self.activate(out)
+        if (1 in self.dropOutPos) and self.dropOut:
+            out = self.dropout(out)  
+        out = self.conv2(out)
+        out = self.activate(out) 
+        if (2 in self.dropOutPos) and self.dropOut:
+            out = self.dropout(out)
+        out = self.conv3(out)
+        out = self.activate(out) 
+        if (3 in self.dropOutPos) and self.dropOut:
+            out = self.dropout(out) 
+        out = self.conv4(out)
+        out = self.activate(out) 
+        if (4 in self.dropOutPos) and self.dropOut:
+            out = self.dropout(out)
+        out = self.conv5(out)
+        return out    
+
+
 # Training loop # function for CNN
 def train_loop(learning_rate, valLabels, val_loader, train_loader, model, NUM_EPOCHS):
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate) 
