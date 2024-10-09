@@ -63,38 +63,57 @@ def train_fn(
                 D_real=torch.sigmoid(D_real).mean().item(),
                 D_fake=torch.sigmoid(D_fake).mean().item(),
             )
+        # Accumulate the total training loss
+        total_val_loss += G_loss.item()
+        
+    avg_val_loss = total_val_loss / len(loop)
+    print(f'Training Generator Loss: {avg_val_loss:.4f}')
+    return avg_val_loss
             
-def validate_fn(gen, val_loader, l1_loss, bce):
+def validate_fn(gen, val_loader, l1_loss, bce, flag_last_epoch=False):
     gen.eval()  # Set generator to evaluation mode
     total_val_loss = 0
+    i = 0
+    all_H = []
 
     with torch.no_grad():  # Disable gradient calculation for validation
-        for idx, (x, y, y_min, y_max) in enumerate(val_loader):
-            x = x.to(config.DEVICE)
-            y = y.to(config.DEVICE)
+        for val_inputs, val_targets, val_targetsMin, val_targetsMax in val_loader:
+            val_inputs_real = val_inputs[:,0,:,:].unsqueeze(1)
+            val_inputs_imag = val_inputs[:,1,:,:].unsqueeze(1)
+            val_targets_real = val_targets[:,0,:,:].unsqueeze(1)
+            val_targets_imag = val_targets[:,1,:,:].unsqueeze(1)
 
             # Forward pass to generate predictions
-            y_fake = gen(x)
-            G_fake_loss = bce(y_fake, y)
-            L1 = l1_loss(y_fake, y) * config.L1_LAMBDA
+            val_outputs_real = gen(val_inputs_real)
+            G_fake_loss = bce(val_outputs_real, val_targets_real)
+            L1 = l1_loss(val_outputs_real, val_targets_real) * config.L1_LAMBDA
             G_loss = G_fake_loss + L1
+
+            val_outputs_imag = gen(val_inputs_imag)
+            G_fake_loss = bce(val_outputs_imag, val_targets_imag)
+            L1 = l1_loss(val_outputs_imag, val_targets_imag) * config.L1_LAMBDA
+            G_loss += G_fake_loss + L1
+
+            G_loss = G_loss/2
 
             # Accumulate the total validation loss
             total_val_loss += G_loss.item()
             
             # Save one generated-target pair for inspection
-            r_rnd = random.randint(0, 1)
-            if (idx ==0) or (r_rnd==1) :
-                random_index = random.randint(0, x.shape[3]-1)
-                example_generated = y_fake[random_index].cpu()  # Convert to CPU for easy handling
-                example_target = y[random_index].cpu()          # Convert to CPU for easy handling
-
+            if flag_last_epoch==True:
+                H = torch.cat(val_outputs_real.unsqueeze(1), val_outputs_imag.unsqueeze(1))
+                all_H.append(H)
+    
+    H_GAN_val = torch.cat(all_H, dim=0)
 
     avg_val_loss = total_val_loss / len(val_loader)
     print(f'Validation Loss: {avg_val_loss:.4f}')
     
     gen.train()  # Set generator back to training mode
-    return avg_val_loss, example_generated, example_target
+    if flag_last_epoch==True:
+        return avg_val_loss, H_GAN_val
+    else:
+        return avg_val_loss
 
 
 def main():
