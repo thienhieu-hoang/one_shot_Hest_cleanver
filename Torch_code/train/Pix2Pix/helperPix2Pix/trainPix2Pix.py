@@ -13,18 +13,25 @@ from tqdm import tqdm
 from torchvision.utils import save_image
 import random
 
+sys.path.append('../../helper')
+import utils
+
 torch.backends.cudnn.benchmark = True
 
 
 def train_fn(
-    disc, gen, loader, opt_disc, opt_gen, l1_loss, bce
+    disc, gen, loader, opt_disc, opt_gen, l1_loss, bce, return_mse=False, return_nmse=False
 ):
     loop = tqdm(loader, leave=True)
+    total_Gtrain_loss = 0
+    total_Dtrain_loss = 0
+    
+    mse_gen_array = torch.empty(0) 
+    mse_gen       = 0
+    nmse_gen_array  = torch.empty(0)
+    nmse_gen        = 0
 
     for idx, (x, y, y_min, y_max) in enumerate(loop):
-        x = x.to(config.DEVICE)
-        y = y.to(config.DEVICE)
-
         # Train Discriminator
         with torch.cuda.amp.autocast():
             y_fake = gen(x)
@@ -33,6 +40,11 @@ def train_fn(
             D_fake = disc(x, y_fake.detach())
             D_fake_loss = bce(D_fake, torch.zeros_like(D_fake))
             D_loss = (D_real_loss + D_fake_loss) / 2
+            
+            nmse_array_idx, mse_array_idx = utils.calNMSE(y_fake, y, return_mse=True)
+            mse_gen_array = torch.cat((mse_gen_array, mse_array_idx))
+            nmse_gen_array = torch.cat((nmse_gen_array, nmse_array_idx))
+            
 
         # disc.zero_grad()
         # d_scaler.scale(D_loss).backward()
@@ -42,6 +54,7 @@ def train_fn(
         disc.zero_grad()
         D_loss.backward()
         opt_disc.step()
+        total_Dtrain_loss += D_loss.item()
 
         # Train generator
         with torch.cuda.amp.autocast():
@@ -58,17 +71,29 @@ def train_fn(
         G_loss.backward()
         opt_gen.step()
 
-        if idx % 10 == 0:
+        if idx % 10 == 0: # to print out the values
             loop.set_postfix(
                 D_real=torch.sigmoid(D_real).mean().item(),
                 D_fake=torch.sigmoid(D_fake).mean().item(),
             )
         # Accumulate the total training loss
-        total_val_loss += G_loss.item()
+        total_Gtrain_loss += G_loss.item()
         
-    avg_val_loss = total_val_loss / len(loop)
-    print(f'Training Generator Loss: {avg_val_loss:.4f}')
-    return avg_val_loss
+    avg_Gtrain_loss = total_Gtrain_loss / len(loop)
+    avg_Dtrain_loss = total_Dtrain_loss / len(loop)
+    
+    mse_gen  = (mse_gen_array).detach().numpy().mean()
+    nmse_gen = (nmse_gen_array).detach().numpy().mean()
+    print(f'Training Generator Loss: {avg_Gtrain_loss:.4f}')
+    
+    if return_mse and return_nmse:
+        return avg_Gtrain_loss, avg_Dtrain_loss, mse_gen, nmse_gen
+    if return_mse:
+        return avg_Gtrain_loss, avg_Dtrain_loss, mse_gen
+    elif return_nmse:
+        return avg_Gtrain_loss, avg_Dtrain_loss, nmse_gen
+    else:
+        return avg_Gtrain_loss, avg_Dtrain_loss
             
 def validate_fn(gen, val_loader, l1_loss, bce, flag_last_epoch=False):
     gen.eval()  # Set generator to evaluation mode
@@ -101,17 +126,17 @@ def validate_fn(gen, val_loader, l1_loss, bce, flag_last_epoch=False):
             
             # Save one generated-target pair for inspection
             if flag_last_epoch==True:
-                H = torch.cat(val_outputs_real.unsqueeze(1), val_outputs_imag.unsqueeze(1))
+                H = torch.stack((val_outputs_real, val_outputs_imag), dim=1)
                 all_H.append(H)
-    
-    H_GAN_val = torch.cat(all_H, dim=0)
+    if flag_last_epoch==True:
+        H_GAN_val = torch.cat(all_H, dim=0)
 
     avg_val_loss = total_val_loss / len(val_loader)
     print(f'Validation Loss: {avg_val_loss:.4f}')
     
     gen.train()  # Set generator back to training mode
     if flag_last_epoch==True:
-        return avg_val_loss, H_GAN_val
+        return avg_val_loss, H_GAN_val.squeeze(2)
     else:
         return avg_val_loss
 

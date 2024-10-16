@@ -114,6 +114,12 @@ class CNN_Est2(nn.Module): # CNN_Est with slowly reduce layers
         if (4 in self.dropOutPos) and self.dropOut:
             out = self.dropout(out)
         out = self.conv5(out)
+        if (5 in self.dropOutPos) and self.dropOut:
+            out = self.dropout(out)
+        out = self.conv6(out)
+        if (6 in self.dropOutPos) and self.dropOut:
+            out = self.dropout(out)
+        out = self.conv7(out)
         return out    
 
 
@@ -297,13 +303,18 @@ def val_step(model, val_loader, criterion, epoch, num_epochs, H_NN_val):
     avg_val_loss = running_val_loss / (len(val_loader)*2)
     return avg_val_loss, H_NN_val
 
-def calNMSE(x, target):
+def calNMSE(x, target, return_mse=False):
     # x, target == ?x612x14 complex
     # return ?x1 array: nmse of each data sample and target sample
     NMSE_array = torch.empty(x.shape[0])
+    MSE_array = torch.empty(x.shape[0])
     for i in range(x.shape[0]):
         target_squared = torch.mean(torch.abs(target[i,:,:]) **2)
         mse_i = torch.mean(torch.abs(x[i,:,:] - target[i,:,:]) ** 2)
+        MSE_array[i] = mse_i
         NMSE_array[i] = mse_i/target_squared
-    return NMSE_array    
+    if return_mse:
+        return NMSE_array, MSE_array
+    else:
+        return NMSE_array    
     
