@@ -5,7 +5,7 @@ import os
 
 FILE_PATH = os.path.dirname(os.path.abspath(__file__))
 
-DEVICE = "cuda:1" if torch.cuda.is_available() else "cpu"
+DEVICE = "cuda:0" if torch.cuda.is_available() else "cpu"
 TRAIN_DIR = FILE_PATH+"/data/maps/maps/train"
 VAL_DIR =  FILE_PATH+"/data/maps/maps/val"
 LEARNING_RATE = 2e-4
