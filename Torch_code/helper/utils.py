@@ -6,7 +6,6 @@ import os
 import numpy as np
 import scipy.io
 
-import config
 import datetime
 import utils
 

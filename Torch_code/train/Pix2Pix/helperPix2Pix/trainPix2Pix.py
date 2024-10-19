@@ -3,9 +3,12 @@ import sys
 import os
 from utilsPix2Pix import save_checkpoint, load_checkpoint, save_some_examples
 import torch.nn as nn
-import torch.optim as optim
+import torch.optim as opti
+
+sys.path.append('..')
 import config
 from dataset import MapDataset
+
 from generator_model import Generator
 from discriminator_model import Discriminator
 from torch.utils.data import DataLoader

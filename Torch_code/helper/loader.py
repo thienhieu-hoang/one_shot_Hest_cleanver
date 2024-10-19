@@ -4,14 +4,12 @@ import h5py
 import os
 from torch.utils.data import DataLoader, TensorDataset
 
-
-import config
 import utils
 import utils_GAN
 
 
 
-def load_data(outer_file_path, rows, fc, device, snr):
+def load_data(outer_file_path, rows, fc, device, snr, batch_size=32):
     H_true = np.empty((0, 2, 612, 14)) # true channel
 
     H_equal = np.empty((0, 2, 612, 14)) # noisy channel # LS channel
@@ -39,7 +37,7 @@ def load_data(outer_file_path, rows, fc, device, snr):
     if 'H_practical_data' in file:
         H_practical = torch.tensor(H_practical[shuffle_order])
     
-    train_size = np.floor(H_linear.shape[0]*0.9) //config.BATCH_SIZE *config.BATCH_SIZE
+    train_size = np.floor(H_linear.shape[0]*0.9) //batch_size *batch_size
     train_size = int(train_size)
     
     # [samples, 2, 612, 14]
@@ -60,7 +58,7 @@ def load_data(outer_file_path, rows, fc, device, snr):
     
     return [trainLabels, valLabels], [H_equal_train, H_linear_train, H_practical_train], [H_equal_val, H_linear_val, H_practical_val]
 
-def load_map_data(outer_file_path, device, snr, train_rate=0.9):
+def load_map_data(outer_file_path, device, snr, train_rate=0.9, batch_size=32):
     H_true = np.empty((0, 2, 612, 14)) # true channel
 
     H_equal = np.empty((0, 2, 612, 14)) # noisy channel # LS channel
@@ -87,7 +85,7 @@ def load_map_data(outer_file_path, device, snr, train_rate=0.9):
     if 'H_practical_data' in file:
         H_practical = torch.tensor(H_practical[shuffle_order])
     
-    train_size = np.floor(H_linear.shape[0]* train_rate) //config.BATCH_SIZE *config.BATCH_SIZE
+    train_size = np.floor(H_linear.shape[0]* train_rate) //batch_size *batch_size
     train_size = int(train_size)
     
     # [samples, 2, 612, 14]
@@ -111,7 +109,7 @@ def load_map_data(outer_file_path, device, snr, train_rate=0.9):
     return [trainLabels, valLabels], [H_equal_train, H_linear_train, H_practical_train], [H_equal_val, H_linear_val, H_practical_val]
 
 
-def loader_dataset(H_linear_train_normd, H_true_train_nomrd, H_linear_val_normd, H_true_val_normd):
+def loader_dataset(H_linear_train_normd, H_true_train_nomrd, H_linear_val_normd, H_true_val_normd, batch_size=32):
     # Split real and imaginary grids into 2 image sets, then concatenate
     trainData_normd   = torch.cat((H_linear_train_normd[:,0,:,:], H_linear_train_normd[:,1,:,:]), dim=0).unsqueeze(1)  # 612 x 14 x (Nsamples*2)
     trainLabels_normd = torch.cat((H_true_train_nomrd[:,0,:,:], H_true_train_nomrd[:,1,:,:]), dim=0).unsqueeze(1)  # 612 x 14 x (Nsamples*2)
@@ -120,13 +118,13 @@ def loader_dataset(H_linear_train_normd, H_true_train_nomrd, H_linear_val_normd,
 
     # Create a DataLoader for dataset
     dataset = TensorDataset(trainData_normd, trainLabels_normd)  # [6144, 1, 612, 14]
-    train_loader = DataLoader(dataset, batch_size=config.BATCH_SIZE, shuffle=True)
+    train_loader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
     val_dataset = TensorDataset(H_linear_val_normd, H_true_val_normd)  # [367, 2, 612, 14]
-    val_loader = DataLoader(val_dataset, batch_size=config.BATCH_SIZE, shuffle=False)
+    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
     return train_loader, val_loader
 
-def load_model(params):
+def load_model(params, file_path):
     generator_li = utils_GAN.Generator(in_channel=params['in_channel'])   # in_channel=1 to estimate real and imag parts separately,
                                                                 # default: in_channel=2 to estimate real and imag parts at the same time
     discriminator_li = utils_GAN.Discriminator(params['in_channel'])
@@ -137,20 +135,20 @@ def load_model(params):
         # modify the directory
         params['epoc'] = params['epoc_saved_model']
         
-        variable_load_path = os.path.join(config.FILE_PATH, 'model/static', 'GAN_'+str(params['snr'])+'dB_epoch_'+str(params['epoc'])+'_variable_'+params['rowss']+'.pth')
+        variable_load_path = os.path.join(file_path, 'model/static', 'GAN_'+str(params['snr'])+'dB_epoch_'+str(params['epoc'])+'_variable_'+params['rowss']+'.pth')
         var_state = torch.load(variable_load_path)
                 
         # load for (LS+LI) model
-        generator_li_load_path = os.path.join(config.FILE_PATH, 'model/static', 'GAN_'+str(params['snr'])+'dB_epoch_'+str(params['epoc'])+'_generator_'+params['rowss']+'.pth')
-        discriminator_li_load_path = os.path.join(config.FILE_PATH, 'model/static', 'GAN_'+str(params['snr'])+'dB_epoch_'+str(params['epoc'])+'_discriminator_'+params['rowss']+'.pth')
+        generator_li_load_path = os.path.join(file_path, 'model/static', 'GAN_'+str(params['snr'])+'dB_epoch_'+str(params['epoc'])+'_generator_'+params['rowss']+'.pth')
+        discriminator_li_load_path = os.path.join(file_path, 'model/static', 'GAN_'+str(params['snr'])+'dB_epoch_'+str(params['epoc'])+'_discriminator_'+params['rowss']+'.pth')
         # load the models
         generator_li.load_state_dict(torch.load(generator_li_load_path))
         discriminator_li.load_state_dict(torch.load(discriminator_li_load_path))
         
         
         # load for LS model
-        generator_ls_load_path = os.path.join(config.FILE_PATH, 'model/static', 'GAN_'+str(params['snr'])+'dB_epoch_'+str(params['epoc'])+'_generator_'+params['rowss']+'.pth')
-        discriminator_ls_load_path = os.path.join(config.FILE_PATH, 'model/static', 'GAN_'+str(params['snr'])+'dB_epoch_'+str(params['epoc'])+'_discriminator_'+params['rowss']+'.pth')
+        generator_ls_load_path = os.path.join(file_path, 'model/static', 'GAN_'+str(params['snr'])+'dB_epoch_'+str(params['epoc'])+'_generator_'+params['rowss']+'.pth')
+        discriminator_ls_load_path = os.path.join(file_path, 'model/static', 'GAN_'+str(params['snr'])+'dB_epoch_'+str(params['epoc'])+'_discriminator_'+params['rowss']+'.pth')
         # load the models
         generator_ls.load_state_dict(torch.load(generator_ls_load_path))
         discriminator_ls.load_state_dict(torch.load(discriminator_ls_load_path))

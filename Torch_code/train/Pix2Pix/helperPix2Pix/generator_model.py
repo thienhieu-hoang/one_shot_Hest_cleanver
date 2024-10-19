@@ -89,6 +89,58 @@ class Generator(nn.Module):
         up7 = self.up7(torch.cat([up6, d2], 1))
         return self.act_tanh(self.final_up(torch.cat([up7, d1], 1)))
 
+class Generator_FineTune(nn.Module):
+    def __init__(self, source_model):
+        super(Generator_FineTune, self).__init__()
+        self.initial_down = source_model.initial_down
+        self.act_tanh  = source_model.act_tanh
+        self.act_leaky = source_model.act_leaky
+        self.act_relu  = source_model.act_relu
+        
+        self.down1 = source_model.down1 # 
+        self.down2 = source_model.down2 # 
+        self.down3 = source_model.down3 # 
+        self.down4 = source_model.down4 # 
+        self.down5 = source_model.down5 # 
+        self.down6 = source_model.down6 # 
+        
+        self.bottleneck = source_model.bottleneck
+        
+        self.up1 = source_model.up1
+        self.up2 = source_model.up2
+        self.up3 = source_model.up3
+        self.up4 = source_model.up4
+        self.up5 = source_model.up5
+        self.up6 = source_model.up6
+        self.up7 = source_model.up7
+        
+        self.final_up = source_model.final_up
+        
+        # Freeze 
+        layers_to_freeze = [self.initial_down, self.down1, self.down2, self.down3, self.down4, self.down5] #, self.down6,
+                            # self.bottleneck, self.up1, self.up2, self.up3, self.up4, self.up5]
+        for layer in layers_to_freeze:
+            for param in layer.parameters():
+                param.requires_grad = False
+        
+    def forward(self, x):
+        d1 = self.initial_down(x)
+        d2 = self.down1(d1)
+        d3 = self.down2(d2)
+        d4 = self.down3(d3)
+        d5 = self.down4(d4)
+        d6 = self.down5(d5)
+        d7 = self.down6(d6)
+        bottleneck = self.act_relu(self.bottleneck(d7))
+        up1 = self.up1(bottleneck)
+        up2 = self.up2(torch.cat([up1, d7], 1))
+        up3 = self.up3(torch.cat([up2, d6], 1))
+        up4 = self.up4(torch.cat([up3, d5], 1))
+        up5 = self.up5(torch.cat([up4, d4], 1))
+        up6 = self.up6(torch.cat([up5, d3], 1))
+        up7 = self.up7(torch.cat([up6, d2], 1))
+        return self.act_tanh(self.final_up(torch.cat([up7, d1], 1)))
+    
 #%%
 def test():
     x = torch.randn((1, 1, 612, 14))  # (samples, channels, H, W)

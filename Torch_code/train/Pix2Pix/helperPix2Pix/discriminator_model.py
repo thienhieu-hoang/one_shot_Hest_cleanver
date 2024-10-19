@@ -54,6 +54,34 @@ class Discriminator(nn.Module):
         x = self.last(x)
         return x
 
+class Discriminator_FineTune(nn.Module):
+    def __init__(self, source_model):
+        super(Discriminator_FineTune, self).__init__()
+        
+        self.initial =  source_model.initial
+        
+        self.activation = source_model.activation
+        
+        self.conv0 = source_model.conv0
+        self.conv1 = source_model.conv1
+        self.conv2 = source_model.conv2
+        
+        self.last  = source_model.last
+        
+        # Freeze
+        layers_to_freeze = [self.initial, self.conv0, self.conv1]
+        for layer in layers_to_freeze:
+            for param in layer.parameters():
+                param.requires_grad = False
+
+    def forward(self, x, y): # x, y -- training, target
+        x = torch.cat([x, y], dim=1)
+        x = self.activation(self.initial(x))
+        x = self.activation(self.conv0(x))
+        x = self.activation(self.conv1(x))
+        x = self.activation(self.conv2(x))
+        x = self.last(x)
+        return x
 
 def test():
     x = torch.randn((1, 1, 612, 14))
