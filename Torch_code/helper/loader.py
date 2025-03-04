@@ -2,7 +2,7 @@ import torch
 import numpy as np
 import h5py
 import os
-from torch.utils.data import DataLoader, TensorDataset
+from torch.utils.data import DataLoader, TensorDataset, RandomSampler
 
 import utils
 import utils_GAN
@@ -105,7 +105,7 @@ def load_map_data(outer_file_path, device, snr, train_rate=0.9, batch_size=32):
     H_practical_val = torch.empty_like(H_linear_val)
     if 'H_practical_data' in file:
         H_practical_val = H_practical[train_size:,:,:,:].to(device, dtype=torch.float)
-    
+        
     return [trainLabels, valLabels], [H_equal_train, H_linear_train, H_practical_train], [H_equal_val, H_linear_val, H_practical_val]
 
 
@@ -195,7 +195,7 @@ def find_incremental_filename(directory, prefix_name, postfix_name, extension='.
         next_number = 1  # Start numbering from 1 if no existing files  
     return next_number
 
-def genLoader(data, target, BATCH_SIZE, device, mode, shuff, approach, lower_range=-1):
+def genLoader(data, target, BATCH_SIZE, device, mode, shuff, approach, lower_range=-1, random_repeat=False, size_after_repeat=0):
         # mode = 'train' or 'valid'
         # approach = 'minmax', 'std', or 'no'
         #   in 'minmax' case: x-min;  y-max
@@ -238,6 +238,10 @@ def genLoader(data, target, BATCH_SIZE, device, mode, shuff, approach, lower_ran
 
     # 1.3 Create a DataLoader for dataset
     dataset = TensorDataset(data_normd, label_normd, label_x, label_y)  # [4224, 1, 612, 14]
-    loader  = DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=shuff)
-
-    return loader, label_x, label_y
+    if not random_repeat:
+        loader  = DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=shuff)
+    else:
+        # Define a sampler to duplicate randomly with replacement
+        sampler = RandomSampler(dataset, replacement=True, num_samples=size_after_repeat)
+        loader  = DataLoader(dataset, batch_size=BATCH_SIZE, sampler=sampler)
+    return loader, label_x, label_y # note: x, y (min, max, var,... here have been shuffled, don't use)

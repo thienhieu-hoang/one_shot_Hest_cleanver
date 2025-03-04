@@ -12,7 +12,7 @@ import utils
 ######################
 # Helping functions/classes for CNN
 ####################
-class CNN_Est(nn.Module): # CNN_Est with DropOut version1
+class CNN_Est(nn.Module): # CNN_Est with DropOut version1 (output_channels reduce quickly)
     def __init__(self, dropOut = 0, act = 'ReLU', dropOutPos = [2,4]):
         # dropOutPos: positions to add DropOut Layer
         #   example: dropOutPos=[3,5] -> DropOut Layers after conv3 and conv5
@@ -62,7 +62,7 @@ class CNN_Est(nn.Module): # CNN_Est with DropOut version1
         out = self.conv5(out)
         return out    
 
-class CNN_Est2(nn.Module): # CNN_Est with slowly reduce layers
+class CNN_Est2(nn.Module): # CNN_Est with slowly reduce output_channels 
     def __init__(self, dropOut = 0, act = 'ReLU', dropOutPos = [2,4]):
         # dropOutPos: positions to add DropOut Layer
         #   example: dropOutPos=[3,5] -> DropOut Layers after conv3 and conv5
@@ -92,35 +92,36 @@ class CNN_Est2(nn.Module): # CNN_Est with slowly reduce layers
             self.dropout = nn.Dropout(p=dropOut)
 
     def forward(self, x):
-        # Forward pass
-        out = self.normalization(x)
+        # Forward pass - for Channel estimation
+        est_H = self.normalization(x)
         if (0 in self.dropOutPos) and self.dropOut:
-            out = self.dropout(out) 
-        out = self.conv1(out)
-        out = self.activate(out)
+            est_H = self.dropout(est_H) 
+        est_H = self.conv1(est_H)
+        est_H = self.activate(est_H)
         if (1 in self.dropOutPos) and self.dropOut:
-            out = self.dropout(out)  
-        out = self.conv2(out)
-        out = self.activate(out) 
+            est_H = self.dropout(est_H)  
+        est_H = self.conv2(est_H)
+        est_H = self.activate(est_H) 
         if (2 in self.dropOutPos) and self.dropOut:
-            out = self.dropout(out)
-        out = self.conv3(out)
-        out = self.activate(out) 
+            est_H = self.dropout(est_H)
+        est_H = self.conv3(est_H)
+        est_H = self.activate(est_H) 
         if (3 in self.dropOutPos) and self.dropOut:
-            out = self.dropout(out) 
-        out = self.conv4(out)
-        out = self.activate(out) 
+            est_H = self.dropout(est_H) 
+        est_H = self.conv4(est_H)
+        est_H = self.activate(est_H) 
         if (4 in self.dropOutPos) and self.dropOut:
-            out = self.dropout(out)
-        out = self.conv5(out)
+            out = self.dropout(est_H)
+        est_H = self.conv5(est_H)
         if (5 in self.dropOutPos) and self.dropOut:
-            out = self.dropout(out)
-        out = self.conv6(out)
+            est_H = self.dropout(est_H)
+        est_H = self.conv6(est_H)
         if (6 in self.dropOutPos) and self.dropOut:
-            out = self.dropout(out)
-        out = self.conv7(out)
-        return out    
-
+            est_H = self.dropout(est_H)
+        est_H = self.conv7(est_H)
+        
+        
+        return est_H    
 
 # Training loop # function for CNN
 def train_loop(learning_rate, valLabels, val_loader, train_loader, model, NUM_EPOCHS):
@@ -219,9 +220,12 @@ def deMinMax(x_normd, x_min, x_max, lower_range=-1):
             
     elif lower_range ==0:
         for i in range(x_normd.shape[0]):
-            x_denormed[i,0,:,:] = (x_normd[i,0,:,:]) *(x_max[i,0] -x_min[i,0]) + x_min[i,0]
-            x_denormed[i,1,:,:] = (x_normd[i,1,:,:]) *(x_max[i,1] -x_min[i,1]) + x_min[i,1]
-            
+            if x_max.dim() == 1: # and x_normd size is [Nsamples, 1, sub, symb]
+                x_denormed[i,:,:,:] = (x_normd[i,:,:,:]) *(x_max[i] -x_min[i]) + x_min[i]
+            elif x_max.dim() == 2:
+                x_denormed[i,0,:,:] = (x_normd[i,0,:,:]) *(x_max[i,0] -x_min[i,0]) + x_min[i,0]
+                x_denormed[i,1,:,:] = (x_normd[i,1,:,:]) *(x_max[i,1] -x_min[i,1]) + x_min[i,1]
+                
     return  x_denormed
 
 def standardize(x):
