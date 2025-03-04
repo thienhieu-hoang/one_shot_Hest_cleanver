@@ -201,56 +201,6 @@ class Discriminator(nn.Module):
         
         return x
 
-# class Discriminator_Pix2Pix(nn.Module):
-#     def __init__(self, in_channel=2):   # inchannel = 2 --> estimate both real and imag parts at the same time
-#                                         # inchannel = 1 --> estimate real and imag parts separately
-        
-#         super(Discriminator, self).__init__()
-#         # initializer = tf.random_normal_initializer(0., 0.02)
-#         # Resize Input
-#         self.prep_layers = nn.ModuleList([
-#             EnlargeLayer(in_channels=in_channel*2, # x, y concatenate along the channels
-#                             filters=2, kernel_size=4, stride=(2,5), add=True, padding=(4,1)),
-#             ShrinkLayer(in_channels=2,filters=2, kernel_size=(4,5), add=True, padding=0)
-#         ])
-        
-#         self.encoder_layer_1 = ShrinkLayer(in_channels= 2, filters=64, kernel_size=4, apply_batchnorm=False)
-#         self.encoder_layer_2 = ShrinkLayer(in_channels= 64, filters=128, kernel_size=4)
-#         self.encoder_layer_3 = ShrinkLayer(in_channels= 128, filters=128, kernel_size=4)
-
-#         self.zero_pad1 = nn.ZeroPad2d(padding=1)
-#         self.conv = nn.Conv2d(in_channels= 128, out_channels=512, kernel_size= 4, stride=2, padding=1, bias=False)
-#         self.bn1 = nn.BatchNorm2d(512)
-#         self.ac = nn.LeakyReLU()
-
-#         self.zero_pad2 = nn.ZeroPad2d(padding=1)
-#         self.last = nn.Conv2d(in_channels= 512, out_channels= 1, kernel_size= 4, stride=1, padding=0)
-        
-#         # Resize output
-#         self.post_layer = ShrinkLayer(in_channels=1, filters=1, kernel_size=(8,1), stride=(6,1), padding=0)
-
-#     def forward(self, x, y): # x,y -- training, target
-        
-#         for p_layer in self.prep_layers:
-#             x = p_layer(x)
-        
-#         x = self.encoder_layer_1(x)
-#         x = self.encoder_layer_2(x)
-#         x = self.encoder_layer_3(x)
-
-#         x = self.zero_pad1(x)
-#         x = self.conv(x)
-#         x = self.bn1(x)
-#         x = self.ac(x)
-
-#         x = self.zero_pad2(x)
-#         x = self.last(x)
-        
-#         x = self.post_layer(x)
-        
-#         return x
-
-
 def discriminator_loss(disc_real_output, disc_generated_output):
     criterion = nn.BCEWithLogitsLoss()
     
