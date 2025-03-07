@@ -7,7 +7,6 @@ import numpy as np
 import scipy.io
 
 import datetime
-import utils
 
 ######################
 # Helping functions/classes for CNN
