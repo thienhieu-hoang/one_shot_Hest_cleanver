@@ -51,7 +51,7 @@ class Discriminator(nn.Module):
         x = self.activation(self.conv0(x))
         x = self.activation(self.conv1(x))
         x = self.activation(self.conv2(x))
-        x = self.last(x)
+        x = self.last(x) # not using activation here
         return x
 
 class Discriminator_FineTune(nn.Module):
@@ -90,7 +90,6 @@ def test():
     preds = model(x, y)
     print(model)
     print(preds.shape)
-    # summary(model, input_size=[(1,3,256,256), (1,3,256,256)])
 
 #%%
 if __name__ == "__main__":

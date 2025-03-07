@@ -3,7 +3,7 @@ import sys
 import os
 from utilsPix2Pix import save_checkpoint, load_checkpoint, save_some_examples
 import torch.nn as nn
-import torch.optim as opti
+import torch.optim as optim
 
 sys.path.append('..')
 import config

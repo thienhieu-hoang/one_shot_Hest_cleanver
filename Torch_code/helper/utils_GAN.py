@@ -147,16 +147,19 @@ class Generator(nn.Module):
         return x
 
 class Discriminator(nn.Module):
-    def __init__(self, in_channel=2):   # inchannel = 2 --> estimate both real and imag parts at the same time
-                                        # inchannel = 1 --> estimate real and imag parts separately
+    def __init__(self, in_channel=2, Pix2Pix=0):    # inchannel = 2 --> estimate both real and imag parts at the same time
+                                                    # inchannel = 1 --> estimate real and imag parts separately
         
         super(Discriminator, self).__init__()
+        self.Pix2Pix = Pix2Pix
         # initializer = tf.random_normal_initializer(0., 0.02)
+        if self.Pix2Pix:
+            in_channel = in_channel*2
         # Resize Input
         self.prep_layers = nn.ModuleList([
-            EnlargeLayer(in_channels=in_channel,filters=2, kernel_size=4, stride=(2,5), add=True, padding=(4,1)),
-            ShrinkLayer(in_channels=2,filters=2, kernel_size=(4,5), add=True, padding=0)
-        ])
+            EnlargeLayer(in_channels=in_channel, filters=in_channel, kernel_size=4, stride=(2,5), add=True, padding=(4,1)),
+            ShrinkLayer(in_channels=in_channel,  filters=in_channel, kernel_size=(4,5), add=True, padding=0)
+        ]) # prep to get the right size of input and output of each layer
         
         self.encoder_layer_1 = ShrinkLayer(in_channels= 2, filters=64, kernel_size=4, apply_batchnorm=False)
         self.encoder_layer_2 = ShrinkLayer(in_channels= 64, filters=128, kernel_size=4)
@@ -173,7 +176,10 @@ class Discriminator(nn.Module):
         # Resize output
         self.post_layer = ShrinkLayer(in_channels=1, filters=1, kernel_size=(8,1), stride=(6,1), padding=0)
 
-    def forward(self, x):
+    def forward(self, x, y=0): # Note: x here is the generated image, while y here is the input (raw) image
+        
+        if self.Pix2Pix:
+            x = torch.cat([x, y], dim=1)
         
         for p_layer in self.prep_layers:
             x = p_layer(x)
@@ -191,6 +197,7 @@ class Discriminator(nn.Module):
         x = self.last(x)
         
         x = self.post_layer(x)
+        # avoid activation function in the last layers
         
         return x
 
@@ -245,16 +252,22 @@ def train_step(input_image, target, generator, discriminator, generator_optimize
     generator_optimizer.zero_grad()
     discriminator_optimizer.zero_grad()
     
-    # Forward pass
+    # Forward pass # Discriminator loss (detached generator output)
     gen_output = generator(input_image)
     disc_real_output = discriminator(target)
-    disc_generated_output = discriminator(gen_output.detach())
+    if discriminator.Pix2Pix:
+        disc_generated_output = discriminator(gen_output.detach(), input_image)
+    else:
+        disc_generated_output = discriminator(gen_output.detach())
     
-    # Calculate losses
+    # Calculate losses  # Generator loss (attached generator output)
     disc_loss = discriminator_loss(disc_real_output, disc_generated_output)
     
     # Backward pass and optimize for generator
-    disc_generated_output2 = discriminator(gen_output)
+    if discriminator.Pix2Pix:
+        disc_generated_output2 = discriminator(gen_output.detach(), input_image)
+    else:
+        disc_generated_output2 = discriminator(gen_output.detach())
     gen_loss = generator_loss(disc_generated_output2, gen_output, target)
     gen_loss.backward(retain_graph=True)  # retain_graph=True if using same computational graph for discriminator
     generator_optimizer.step()
