@@ -57,7 +57,7 @@ def helperLinearInterp(Y_noise, pilot_Indices, pilot_Symbols):
 
     
     # Perform grid interpolation
-    for i in range(32):
+    for i in range(Y_noise.shape[0]):
         interpolated = griddata(
             (col_idx, row_idx),  # Known (x, y) positions
             known_values[i,:],  # Known values
@@ -75,12 +75,18 @@ def helperLinearInterp(Y_noise, pilot_Indices, pilot_Symbols):
 def helperLoadModels(device, snr):
     # Loading trained-only models
     model_path = '../model/static/CNN/BS16/3500_3516/ver27_/'
-    LS_CNN_trained = CNN_Est().to(device)
+    if snr<0:
+        LS_CNN_trained = CNN_Est().to(device)
+    else:
+        LS_CNN_trained = CNN_Est2().to(device)
     checkpoint = (torch.load(model_path + str(snr)+'dB/CNN_1_LS_CNN_model.pth'))
     LS_CNN_trained.load_state_dict(checkpoint["model_state_dict"])
     LS_CNN_trained.eval()
     #--------------------------------------------------
-    LI_CNN_trained = CNN_Est().to(device)
+    if snr<0:
+        LI_CNN_trained = CNN_Est().to(device)
+    else:
+        LI_CNN_trained = CNN_Est2().to(device)
     checkpoint = (torch.load(model_path + str(snr)+'dB/CNN_1_LS_LI_CNN_model.pth'))
     LS_CNN_trained.load_state_dict(checkpoint["model_state_dict"])
     LI_CNN_trained.eval()
