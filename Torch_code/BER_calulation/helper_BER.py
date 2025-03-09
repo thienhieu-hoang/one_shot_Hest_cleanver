@@ -3,6 +3,20 @@ import torch.nn as nn
 import numpy as np
 from scipy.interpolate import griddata
 
+import sys
+import os
+# Get the parent directory of the current folder
+parent_dir = os.path.abspath(os.path.join(os.getcwd(), ".."))
+
+# Add the parent directory to sys.path so Python can find the helper folder
+sys.path.append(parent_dir)
+
+# to load models
+from train.Pix2Pix.helperPix2Pix.discriminator_model import Discriminator
+from train.Pix2Pix.helperPix2Pix.generator_model import Generator, Generator_FineTune
+from helper.utils import CNN_Est2, CNN_Est, deMinMax
+from helper.utils_transfer import FineTuneModel2
+
 def linear_extrapolation_matrix(matrix):
     # Extract known columns (2 to 11)
     known_columns = matrix[:, 2:12]  # Columns 2 to 11
@@ -57,3 +71,75 @@ def helperLinearInterp(Y_noise, pilot_Indices, pilot_Symbols):
     H_linear = torch.tensor(H_linear, dtype=torch.complex64).to(H_equalized.device)
 
     return H_equalized, H_linear
+
+def helperLoadModels(device, snr):
+    # Loading trained-only models
+    model_path = '../model/static/CNN/BS16/3500_3516/ver27_/'
+    LS_CNN_trained = CNN_Est().to(device)
+    checkpoint = (torch.load(model_path + str(snr)+'dB/CNN_1_LS_CNN_model.pth'))
+    LS_CNN_trained.load_state_dict(checkpoint["model_state_dict"])
+    LS_CNN_trained.eval()
+    #--------------------------------------------------
+    LI_CNN_trained = CNN_Est().to(device)
+    checkpoint = (torch.load(model_path + str(snr)+'dB/CNN_1_LS_LI_CNN_model.pth'))
+    LS_CNN_trained.load_state_dict(checkpoint["model_state_dict"])
+    LI_CNN_trained.eval()
+    #--------------------------------------------------
+    epoc_load = 40 # epoch to load saved models
+    model_path = '../model/static/GAN/BS16/3500_3516/ver17_/'
+    LS_GAN_trained = Generator().to(device)
+    checkpoint = (torch.load(model_path + str(snr) + 'dB/' +str(epoc_load) + 'epoc_G_1_LS_GAN_model.pth'))
+    LS_GAN_trained.load_state_dict(checkpoint["model_state_dict"])
+    LS_GAN_trained.eval()
+    #--------------------------------------------------
+    LI_GAN_trained = Generator().to(device) 
+    checkpoint = (torch.load(model_path + str(snr) + 'dB/' +str(epoc_load) + 'epoc_G_1_LS_LI_GAN_model.pth'))
+    LS_GAN_trained.load_state_dict(checkpoint["model_state_dict"])
+    LI_GAN_trained.eval()
+
+    ############################################################
+    # Loading transferred models
+    model_path = '../transfer/transferd_model/static/'
+    temp_model = CNN_Est()
+    LS_CNN_transfer = FineTuneModel2(temp_model).to(device)
+    if snr < 0:
+        checkpoint = (torch.load(model_path + 'CNN/ver11_/' + str(snr)+'dB/LS_CNN_model.pth'))
+    else:
+        checkpoint = (torch.load(model_path + 'CNN/ver10_/' + str(snr)+'dB/LS_CNN_model.pth'))
+    LS_CNN_transfer.load_state_dict(checkpoint["model_state_dict"])
+    LS_CNN_transfer.eval()
+    #--------------------------------------------------
+    LI_CNN_transfer = FineTuneModel2(temp_model).to(device)
+    if snr < 0:
+        checkpoint = (torch.load(model_path + 'CNN/ver11_/' + str(snr)+'dB/LS_LI_CNN_model.pth'))
+    else:
+        checkpoint = (torch.load(model_path + 'CNN/ver10_/' + str(snr)+'dB/LS_LI_CNN_model.pth'))
+    LI_CNN_transfer.load_state_dict(checkpoint["model_state_dict"])
+    LI_CNN_transfer.eval()
+    #--------------------------------------------------
+    model_path = '../transfer/transferd_model/static/'
+    temp_model = Generator()
+    LS_GAN_transfer = Generator_FineTune(temp_model).to(device)
+    checkpoint = (torch.load(model_path + 'GAN/ver9_/' + str(snr)+'dB/LS_GAN_G_model.pth'))
+    LS_GAN_transfer.load_state_dict(checkpoint["model_state_dict"])
+    LS_GAN_transfer.eval()
+    #--------------------------------------------------
+    LI_GAN_transfer = Generator_FineTune(temp_model).to(device)
+    checkpoint = (torch.load(model_path + 'GAN/ver9_/' + str(snr)+'dB/LS_LI_GAN_G_model.pth'))
+    LI_GAN_transfer.load_state_dict(checkpoint["model_state_dict"])
+    LI_GAN_transfer.eval()
+    
+    return LS_CNN_trained, LI_CNN_trained, LS_GAN_trained, LI_GAN_trained, LS_CNN_transfer, LI_CNN_transfer, LS_GAN_transfer, LI_GAN_transfer
+
+def helperEqualX(Y_noise, min_max, model, inputs_real, inputs_imag, device):
+    X_out_real = model(inputs_real)    # 32x1x612x14
+    X_out_imag = model(inputs_imag)
+    X_out_output = torch.cat((X_out_real, X_out_imag), dim=1) # 32x2x612x14
+    # De-normalized
+    X_out_denormd = deMinMax(X_out_output, min_max[:,0], min_max[:,1])
+    X_out_complex = torch.complex(X_out_denormd[:,0,:,:], X_out_denormd[:,1,:,:]).to(device)
+
+    # Estimate X from H and Y
+    X_out = Y_noise/X_out_complex
+    return X_out
+
