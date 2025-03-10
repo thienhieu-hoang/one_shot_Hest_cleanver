@@ -138,14 +138,14 @@ def helperLoadModels(device, snr):
     return LS_CNN_trained, LI_CNN_trained, LS_GAN_trained, LI_GAN_trained, LS_CNN_transfer, LI_CNN_transfer, LS_GAN_transfer, LI_GAN_transfer
 
 def helperEqualX(Y_noise, min_max, model, inputs_real, inputs_imag, device):
-    X_out_real = model(inputs_real)    # 32x1x612x14
-    X_out_imag = model(inputs_imag)
-    X_out_output = torch.cat((X_out_real, X_out_imag), dim=1) # 32x2x612x14
+    H_out_real = model(inputs_real)    # 32x1x612x14
+    H_out_imag = model(inputs_imag)
+    H_out_output = torch.cat((H_out_real, H_out_imag), dim=1) # 32x2x612x14
     # De-normalized
-    X_out_denormd = deMinMax(X_out_output, min_max[:,0], min_max[:,1])
-    X_out_complex = torch.complex(X_out_denormd[:,0,:,:], X_out_denormd[:,1,:,:]).to(device)
+    H_out_denormd = deMinMax(H_out_output, min_max[:,0], min_max[:,1])
+    H_out_complex = torch.complex(H_out_denormd[:,0,:,:], H_out_denormd[:,1,:,:]).to(device)
 
     # Estimate X from H and Y
-    X_out = Y_noise/X_out_complex
+    X_out = Y_noise/H_out_complex
     return X_out
 
